@@ -84,6 +84,8 @@ const baseEnv = {
         ["FREE", "STARTER", "PRO", "LIFETIME", "UNLIMITED"].includes(str),
       )
       .default("FREE"),
+    EMOZION_SHARED_SECRET: z.string().min(32).optional(),
+    EMOZION_CRM_URL: z.string().url().optional(),
     TYPEBOT_DEBUG: boolean.optional().default(false),
     CHAT_API_TIMEOUT: z.coerce.number().optional(),
     RADAR_HIGH_RISK_KEYWORDS: z
@@ -129,6 +131,7 @@ const baseEnv = {
       .string()
       .optional()
       .default("The bot you're looking for doesn't exist"),
+    NEXT_PUBLIC_EMOZION_MODE: boolean.optional().default(false),
   },
   runtimeEnv: {
     NEXT_PUBLIC_VIEWER_URL: getRuntimeVariable("NEXT_PUBLIC_VIEWER_URL"),
@@ -148,6 +151,7 @@ const baseEnv = {
     NEXT_PUBLIC_VIEWER_404_SUBTITLE: getRuntimeVariable(
       "NEXT_PUBLIC_VIEWER_404_SUBTITLE",
     ),
+    NEXT_PUBLIC_EMOZION_MODE: getRuntimeVariable("NEXT_PUBLIC_EMOZION_MODE"),
   },
 };
 const githubEnv = {

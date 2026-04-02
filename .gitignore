@@ -84,3 +84,8 @@ vitest.config.*.timestamp*
 content-collections.d.ts.map
 content-collections.d.ts
 **/next-env.d.ts
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
+notas.txt

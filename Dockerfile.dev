@@ -1,0 +1,130 @@
+# syntax=docker/dockerfile:1
+# =============================================================================
+# Emozion Typebot Builder — Development Image
+# Target:  guillenatali/typebot-e
+# Deploy:  Portainer (single instance)
+# Scope:   apps/builder only (SSO + white-label fork)
+#
+# Build:
+#   docker build -f Dockerfile.dev \
+#     --build-arg EMOZION_CRM_URL=https://crm.emozion.com \
+#     --build-arg NEXT_PUBLIC_EMOZION_MODE=true \
+#     -t guillenatali/typebot-e:dev .
+#
+# NOTE: EMOZION_CRM_URL is baked into the CSP at build time (next.config.mjs).
+#       NEXT_PUBLIC_VIEWER_URL is baked into the Next.js bundle at build time.
+#       All other runtime vars (DATABASE_URL, NEXTAUTH_URL, etc.) are passed
+#       as environment variables in the Portainer service definition.
+# =============================================================================
+
+ARG BUN_VERSION=1.3.9
+ARG NODE_VERSION=24
+
+# ─── Stage 1: Extract the Bun binary ────────────────────────────────────────
+FROM oven/bun:${BUN_VERSION}-alpine AS bun-binary
+
+
+# ─── Stage 2: Build ─────────────────────────────────────────────────────────
+FROM node:${NODE_VERSION}-alpine AS builder
+
+# Build-time args — baked into the Next.js bundle by the compiler
+ARG EMOZION_CRM_URL="*"
+ARG NEXT_PUBLIC_EMOZION_MODE=true
+ARG NEXT_PUBLIC_VIEWER_URL="https://bot.olesistemas.com.ar"
+
+# Native build dependencies (required by some npm packages with bindings)
+RUN apk add --no-cache \
+    build-base \
+    ca-certificates \
+    git \
+    openssl \
+    python3 \
+    libc6-compat
+
+# Install Bun alongside Node (Nx uses bunx as the task runner)
+COPY --from=bun-binary /usr/local/bin/bun /usr/local/bin/bun
+RUN ln -s /usr/local/bin/bun /usr/local/bin/bunx
+
+WORKDIR /app
+
+# Copy entire monorepo (bun workspaces need the full tree)
+COPY . .
+
+# Install all workspace dependencies
+RUN SENTRYCLI_SKIP_DOWNLOAD=1 bun install --frozen-lockfile
+
+# Generate Prisma client targeting the current platform (linux-musl on Alpine)
+RUN DATABASE_URL=postgresql:// bunx nx db:generate prisma
+
+# Build apps/builder in Next.js standalone mode
+# SKIP_ENV_CHECK avoids requiring every runtime var at build time.
+# NEXT_PUBLIC_VIEWER_URL is baked into the bundle at build time.
+RUN SKIP_ENV_CHECK=true \
+    DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
+    NEXT_PUBLIC_VIEWER_URL=${NEXT_PUBLIC_VIEWER_URL} \
+    EMOZION_CRM_URL=${EMOZION_CRM_URL} \
+    NEXT_PUBLIC_EMOZION_MODE=${NEXT_PUBLIC_EMOZION_MODE} \
+    bunx nx build builder
+
+
+# ─── Stage 3: Runner ────────────────────────────────────────────────────────
+FROM node:${NODE_VERSION}-alpine AS runner
+
+# openssl:      required by Prisma query engine at runtime
+# libc6-compat: glibc shim for musl (some Node native modules need it)
+# bash:         entrypoint script uses bash syntax (configureRuntimeEnv step)
+RUN apk add --no-cache \
+    openssl \
+    libc6-compat \
+    bash \
+    dos2unix
+
+# Non-root user: UID/GID 1001 (1000 is taken by the built-in 'node' user in node:alpine)
+RUN addgroup -g 1001 -S emozion && \
+    adduser  -u 1001 -S emozion -G emozion
+
+WORKDIR /app
+
+# ── Next.js standalone output ──────────────────────────────────────────────
+# The standalone dir mirrors the monorepo root (outputFileTracingRoot=../../)
+# so after COPY it lands as:
+#   /app/apps/builder/server.js   ← the Next.js HTTP server
+#   /app/node_modules/            ← traced runtime deps (minimal)
+#   /app/packages/...             ← traced package sources
+COPY --from=builder --chown=emozion:emozion \
+    /app/apps/builder/.next/standalone ./
+
+# Static assets are NOT included in standalone; they must be copied separately
+COPY --from=builder --chown=emozion:emozion \
+    /app/apps/builder/.next/static ./apps/builder/.next/static
+
+# Public dir is writable at runtime: next-runtime-env writes __ENV.js here
+# to inject NEXT_PUBLIC_ vars into the client bundle without a rebuild.
+COPY --from=builder --chown=emozion:emozion \
+    /app/apps/builder/public ./apps/builder/public
+
+# ── Prisma: CLI + engines + migration schema ───────────────────────────────
+# The standalone node_modules includes @prisma/client (runtime queries) but
+# NOT the Prisma CLI binary needed for `migrate deploy` at startup.
+COPY --from=builder --chown=emozion:emozion \
+    /app/packages/prisma/postgresql ./packages/prisma/postgresql
+
+COPY --from=builder --chown=emozion:emozion /app/node_modules ./node_modules
+
+# ── Entrypoint ────────────────────────────────────────────────────────────
+# Reuse the upstream entrypoint script. It runs three steps in order:
+#   1. configureRuntimeEnv() → writes /app/apps/builder/public/__ENV.js
+#   2. prisma migrate deploy  → runs pending DB migrations (safe to repeat)
+#   3. NODE_OPTIONS=--no-node-snapshot node apps/builder/server.js
+COPY --chown=root:root scripts/builder-entrypoint.sh /entrypoint.sh
+RUN dos2unix /entrypoint.sh && chmod +x /entrypoint.sh
+
+USER emozion
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+EXPOSE 3000
+
+CMD ["/entrypoint.sh"]

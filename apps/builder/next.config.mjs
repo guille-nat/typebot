@@ -54,10 +54,6 @@ const nextConfig = {
         source: "/(.*)?",
         headers: [
           {
-            key: "X-Frame-Options",
-            value: "SAMEORIGIN",
-          },
-          {
             key: "X-Content-Type-Options",
             value: "nosniff",
           },
@@ -76,6 +72,7 @@ const nextConfig = {
               `media-src 'self' blob: https:${isDev ? " http://localhost:* " : ""}`,
               "worker-src 'self' blob:",
               "object-src 'none'",
+              `frame-ancestors 'self'${process.env.EMOZION_CRM_URL ? ` ${process.env.EMOZION_CRM_URL}` : ""}`,
             ].join("; "),
           },
         ],

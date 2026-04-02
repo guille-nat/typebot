@@ -30,6 +30,8 @@ import { useTypebot } from "../providers/TypebotProvider";
 import { EditableTypebotName } from "./EditableTypebotName";
 import { GuestTypebotHeader } from "./UnauthenticatedTypebotHeader";
 
+const isEmozionMode = process.env.NEXT_PUBLIC_EMOZION_MODE === "true";
+
 export const TypebotHeader = () => {
   const { typebot, publishedTypebot, currentUserMode } = useTypebot();
   const { workspace } = useWorkspace();
@@ -45,7 +47,7 @@ export const TypebotHeader = () => {
   return (
     <div className="flex w-full border-b justify-center items-center relative h-(--header-height) bg-gray-1 shrink-0">
       {isOpen && <SupportBubble autoShowDelay={0} />}
-      <LeftElements className="absolute left-4" onHelpClick={handleHelpClick} />
+      <LeftElements className="absolute left-4" onHelpClick={isEmozionMode ? undefined : handleHelpClick} />
       <TypebotNav
         className="absolute hidden xl:flex"
         typebotId={typebot?.id}
@@ -63,7 +65,7 @@ const LeftElements = ({
   onHelpClick,
   className,
 }: {
-  onHelpClick: () => void;
+  onHelpClick: (() => void) | undefined;
   className?: string;
 }) => {
   const { t } = useTranslate();
@@ -222,12 +224,14 @@ const LeftElements = ({
             </Tooltip.Root>
           </div>
         )}
-        <Button onClick={onHelpClick} variant="secondary" size="sm">
-          <CustomerSupportIcon />
-          <span className="hidden xl:inline">
-            {t("editor.header.helpButton.label")}
-          </span>
-        </Button>
+        {onHelpClick && (
+          <Button onClick={onHelpClick} variant="secondary" size="sm">
+            <CustomerSupportIcon />
+            <span className="hidden xl:inline">
+              {t("editor.header.helpButton.label")}
+            </span>
+          </Button>
+        )}
       </div>
       {isSavingLoading && (
         <div className="flex items-center gap-2">
