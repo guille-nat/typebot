@@ -32,8 +32,31 @@ injectViewerUrlIfVercelPreview(process.env.NEXT_PUBLIC_VIEWER_URL);
 
 configureRuntimeEnv();
 
+// Extract the CRM host safely — next.config.mjs is evaluated at build time by NX (project graph
+// analysis) without env vars present, so new URL() would throw "Invalid URL" if called directly.
+const emozionCrmHost = (() => {
+  const url = process.env.EMOZION_CRM_URL;
+  if (!url) return null;
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+})();
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Allow Server Actions to be invoked from within cross-origin iframes (EmozionBot CRM embedding).
+  // Next.js 15+ validates the Origin header on Server Action requests; this permits the CRM origin.
+  ...(emozionCrmHost
+    ? {
+        experimental: {
+          serverActions: {
+            allowedOrigins: [emozionCrmHost],
+          },
+        },
+      }
+    : {}),
   transpilePackages: [
     // https://github.com/nextauthjs/next-auth/discussions/9385#discussioncomment-12023012
     "next-auth",

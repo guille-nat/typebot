@@ -22,11 +22,43 @@ import { providers } from "./providers";
 
 export const SET_TYPEBOT_COOKIE_HEADER = "Set-Typebot-Cookie" as const;
 
+// When the builder is embedded as a cross-origin iframe (e.g., inside EmozionBot CRM),
+// browsers block cookies that don't have SameSite=None; Secure.
+// We force all NextAuth cookies to use these attributes on HTTPS environments.
+const isSecure =
+  env.NEXTAUTH_URL?.startsWith("https://") === true &&
+  !new URL(env.NEXTAUTH_URL).hostname.includes("localhost");
+
+const crossOriginCookies = isSecure
+  ? {
+      sessionToken: {
+        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+      },
+      csrfToken: {
+        // csrfToken must NOT be httpOnly so the client can read it for the double-submit pattern
+        options: { httpOnly: false, sameSite: "none" as const, path: "/", secure: true },
+      },
+      callbackUrl: {
+        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+      },
+      pkceCodeVerifier: {
+        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+      },
+      state: {
+        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+      },
+      nonce: {
+        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+      },
+    }
+  : undefined;
+
 const nextAuth = NextAuth((req) => ({
   adapter: createAuthPrismaAdapter(prisma),
   secret: env.ENCRYPTION_SECRET,
   providers,
   trustHost: env.VERCEL_GIT_COMMIT_SHA ? undefined : true,
+  ...(crossOriginCookies ? { cookies: crossOriginCookies } : {}),
   pages: {
     signIn: "/signin",
     newUser: env.NEXT_PUBLIC_ONBOARDING_TYPEBOT_ID ? "/onboarding" : undefined,
