@@ -39,6 +39,7 @@ async function handleRequest(request: Request) {
 
     return resolvedResponse;
   } catch (error) {
+    console.error("🔥 ORPC unhandled error:", error);
     after(() =>
       logServerRequest({
         error,
