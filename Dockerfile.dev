@@ -103,13 +103,17 @@ COPY --from=builder --chown=emozion:emozion \
 COPY --from=builder --chown=emozion:emozion \
     /app/apps/builder/public ./apps/builder/public
 
-# ── Prisma: CLI + engines + migration schema ───────────────────────────────
-# The standalone node_modules includes @prisma/client (runtime queries) but
-# NOT the Prisma CLI binary needed for `migrate deploy` at startup.
-COPY --from=builder --chown=emozion:emozion \
-    /app/packages/prisma/postgresql ./packages/prisma/postgresql
+ # ── Prisma: CLI + engines + migration schema ───────────────────────────────
+ # The standalone node_modules includes @prisma/client (runtime queries) but
+ # NOT the Prisma CLI binary needed for `migrate deploy` at startup.
+ COPY --from=builder --chown=emozion:emozion \
+     /app/packages/prisma/postgresql ./packages/prisma/postgresql
 
-COPY --from=builder --chown=emozion:emozion /app/node_modules ./node_modules
+ # prisma.config.ts is required by Prisma v7 to resolve DATABASE_URL at runtime.
+ COPY --from=builder --chown=emozion:emozion \
+     /app/packages/prisma/prisma.config.ts ./packages/prisma/prisma.config.ts
+ 
+ COPY --from=builder --chown=emozion:emozion /app/node_modules ./node_modules
 
 # ── Entrypoint ────────────────────────────────────────────────────────────
 # Reuse the upstream entrypoint script. It runs three steps in order:

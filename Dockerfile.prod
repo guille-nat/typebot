@@ -110,6 +110,12 @@ COPY --from=builder --chown=emozion:emozion \
 COPY --from=builder --chown=emozion:emozion \
     /app/packages/prisma/postgresql ./packages/prisma/postgresql
 
+# prisma.config.ts is required by Prisma v7 to resolve DATABASE_URL at runtime.
+# Without it, `prisma migrate deploy --config packages/prisma/prisma.config.ts`
+# fails with "Config file not found".
+COPY --from=builder --chown=emozion:emozion \
+    /app/packages/prisma/prisma.config.ts ./packages/prisma/prisma.config.ts
+
 COPY --from=builder --chown=emozion:emozion /app/node_modules ./node_modules
 
 # ── Entrypoint ────────────────────────────────────────────────────────────
