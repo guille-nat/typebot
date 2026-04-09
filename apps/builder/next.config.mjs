@@ -44,6 +44,14 @@ const emozionCrmHost = (() => {
   }
 })();
 
+const frameAncestorsDirective = [
+  "'self'",
+  "https://app.olesistemas.com.ar",
+  process.env.EMOZION_CRM_URL,
+]
+  .filter((value) => typeof value === "string" && value.length > 0)
+  .join(" ");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Allow Server Actions to be invoked from within cross-origin iframes (EmozionBot CRM embedding).
@@ -95,7 +103,7 @@ const nextConfig = {
               `media-src 'self' blob: https:${isDev ? " http://localhost:* " : ""}`,
               "worker-src 'self' blob:",
               "object-src 'none'",
-              `frame-ancestors 'self'${process.env.EMOZION_CRM_URL ? ` ${process.env.EMOZION_CRM_URL}` : ""}`,
+              `frame-ancestors ${frameAncestorsDirective}`,
             ].join("; "),
           },
         ],

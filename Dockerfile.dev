@@ -7,7 +7,8 @@
 #
 # Build:
 #   docker build -f Dockerfile.dev \
-#     --build-arg EMOZION_CRM_URL=https://crm.emozion.com \
+#     --build-arg EMOZION_CRM_URL=https://app.dev.olesistemas.com.ar \
+#     --build-arg NEXT_PUBLIC_VIEWER_URL=https://bot.dev.olesistemas.com.ar \
 #     --build-arg NEXT_PUBLIC_EMOZION_MODE=true \
 #     -t guillenatali/typebot-e:dev .
 #
@@ -28,9 +29,9 @@ FROM oven/bun:${BUN_VERSION}-alpine AS bun-binary
 FROM node:${NODE_VERSION}-alpine AS builder
 
 # Build-time args — baked into the Next.js bundle by the compiler
-ARG EMOZION_CRM_URL="*"
+ARG EMOZION_CRM_URL
 ARG NEXT_PUBLIC_EMOZION_MODE=true
-ARG NEXT_PUBLIC_VIEWER_URL="https://bot.olesistemas.com.ar"
+ARG NEXT_PUBLIC_VIEWER_URL
 
 # Native build dependencies (required by some npm packages with bindings)
 RUN apk add --no-cache \
@@ -52,6 +53,9 @@ COPY . .
 
 # Install all workspace dependencies
 RUN SENTRYCLI_SKIP_DOWNLOAD=1 bun install --frozen-lockfile
+
+# Fail fast if required URLs were not provided at build time.
+RUN test -n "${EMOZION_CRM_URL}" && test -n "${NEXT_PUBLIC_VIEWER_URL}"
 
 # Generate Prisma client targeting the current platform (linux-musl on Alpine)
 RUN DATABASE_URL=postgresql:// bunx nx db:generate prisma

@@ -29,26 +29,68 @@ const isSecure =
   env.NEXTAUTH_URL?.startsWith("https://") === true &&
   !new URL(env.NEXTAUTH_URL).hostname.includes("localhost");
 
+// Required for Builder (typebot.*) + Viewer (bot.*) to share the same NextAuth session.
+// NOTE: Do NOT set this for localhost dev.
+const sharedCookieDomain = isSecure
+  ? (".olesistemas.com.ar" as const)
+  : undefined;
+
 const crossOriginCookies = isSecure
   ? {
       sessionToken: {
-        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+        options: {
+          domain: sharedCookieDomain,
+          httpOnly: true,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
       },
       csrfToken: {
         // csrfToken must NOT be httpOnly so the client can read it for the double-submit pattern
-        options: { httpOnly: false, sameSite: "none" as const, path: "/", secure: true },
+        options: {
+          domain: sharedCookieDomain,
+          httpOnly: false,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
       },
       callbackUrl: {
-        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+        options: {
+          domain: sharedCookieDomain,
+          httpOnly: true,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
       },
       pkceCodeVerifier: {
-        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+        options: {
+          domain: sharedCookieDomain,
+          httpOnly: true,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
       },
       state: {
-        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+        options: {
+          domain: sharedCookieDomain,
+          httpOnly: true,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
       },
       nonce: {
-        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+        options: {
+          domain: sharedCookieDomain,
+          httpOnly: true,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
       },
     }
   : undefined;

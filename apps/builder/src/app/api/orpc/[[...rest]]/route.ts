@@ -3,16 +3,39 @@ import { auth } from "@typebot.io/auth/lib/nextAuth";
 import { createContext } from "@typebot.io/config/orpc/builder/context";
 import { UserId } from "@typebot.io/shared-core/domain";
 import { logServerRequest } from "@typebot.io/telemetry/logServerRequest";
-import { after } from "next/server";
+import { after, type NextRequest } from "next/server";
 import { appRouter } from "../../router";
 
 const handler = new RPCHandler(appRouter);
 
-async function handleRequest(request: Request) {
+type RouteContext<_T> = {
+  params: Promise<{ rest?: string[] }>;
+};
+
+async function handleRequest(
+  request: NextRequest,
+  routeContext: RouteContext<"/api/orpc/[[...rest]]">,
+) {
   const startedAt = Date.now();
 
+  // Reconstruct request to make it work with Next.js rewrites / reverse proxies.
+  // Without this, request.nextUrl.pathname can collapse to "/api/orpc" and ORPC
+  // won't match procedure paths like "/typebot/getTypebot" => 404.
+  const resolvedPathname =
+    `/api/orpc/${(await routeContext.params)?.rest?.join("/") ?? ""}`.replace(
+      /\/$/,
+      "",
+    );
+  const resolvedRequest =
+    resolvedPathname === request.nextUrl.pathname
+      ? request
+      : new Request(
+          request.url.replace(request.nextUrl.pathname, resolvedPathname),
+          request,
+        );
+
   try {
-    const { response } = await handler.handle(request, {
+    const { response } = await handler.handle(resolvedRequest, {
       prefix: "/api/orpc",
       context: createContext({
         authenticate: async () => {
@@ -31,7 +54,7 @@ async function handleRequest(request: Request) {
       response ?? new Response("Not found", { status: 404 });
     after(() =>
       logServerRequest({
-        request,
+        request: resolvedRequest,
         response: resolvedResponse,
         startedAt,
       }),
@@ -43,7 +66,7 @@ async function handleRequest(request: Request) {
     after(() =>
       logServerRequest({
         error,
-        request,
+        request: resolvedRequest,
         startedAt,
       }),
     );
