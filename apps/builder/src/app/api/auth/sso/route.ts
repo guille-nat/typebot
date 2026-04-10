@@ -33,13 +33,19 @@ export const GET = async (req: NextRequest) => {
   try {
     payload = jwt.verify(token, env.EMOZION_SHARED_SECRET) as SsoJwtPayload;
   } catch {
-    return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Invalid or expired token" },
+      { status: 401 },
+    );
   }
 
   const { email, workspaceId, workspaceName } = payload;
 
   if (!email || !workspaceId || !workspaceName) {
-    return NextResponse.json({ error: "Invalid token payload" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid token payload" },
+      { status: 400 },
+    );
   }
 
   // Upsert user by email
@@ -94,6 +100,7 @@ export const GET = async (req: NextRequest) => {
   const isHttps =
     env.NEXTAUTH_URL.startsWith("https://") &&
     !new URL(env.NEXTAUTH_URL).hostname.includes("localhost");
+  const sharedCookieDomain = isHttps ? ".olesistemas.com.ar" : undefined;
   const cookieName = `${isHttps ? "__Secure-" : ""}authjs.session-token`;
 
   // SameSite=None requires Secure; fallback to Lax for HTTP (dev)
@@ -105,12 +112,13 @@ export const GET = async (req: NextRequest) => {
     "HttpOnly",
     `SameSite=${sameSite}`,
     `Expires=${expires.toUTCString()}`,
+    ...(sharedCookieDomain ? [`Domain=${sharedCookieDomain}`] : []),
     ...(isHttps ? ["Secure"] : []),
   ].join("; ");
 
   const baseUrl = process.env.NEXTAUTH_URL;
   const response = NextResponse.redirect(
-    new URL("/typebots", baseUrl),
+    new URL(`/w/${encodeURIComponent(workspaceId)}/typebots`, baseUrl),
     { status: 302 },
   );
   response.headers.set("Set-Cookie", cookieValue);
