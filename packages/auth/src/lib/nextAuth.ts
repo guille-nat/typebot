@@ -46,6 +46,9 @@ const crossOriginCookies = isSecure
         },
       },
       csrfToken: {
+        name: sharedCookieDomain
+          ? "__Secure-authjs.csrf-token"
+          : "__Host-authjs.csrf-token",
         // csrfToken must NOT be httpOnly so the client can read it for the double-submit pattern
         options: {
           ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
