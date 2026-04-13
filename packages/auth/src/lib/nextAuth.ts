@@ -16,6 +16,7 @@ import NextAuth, { type NextAuthResult } from "next-auth";
 import { accountHasRequiredOAuthGroups } from "../helpers/accountHasRequiredOAuthGroups";
 import { createAuthPrismaAdapter } from "../helpers/createAuthPrismaAdapter";
 import { isEmailLegit } from "../helpers/emailValidation";
+import { getSharedAuthCookieDomain } from "../helpers/getSharedAuthCookieDomain";
 import { getNewUserInvitations } from "../helpers/getNewUserInvitations";
 import oneMinRateLimiter from "./oneMinRateLimiter";
 import { providers } from "./providers";
@@ -31,15 +32,13 @@ const isSecure =
 
 // Required for Builder (typebot.*) + Viewer (bot.*) to share the same NextAuth session.
 // NOTE: Do NOT set this for localhost dev.
-const sharedCookieDomain = isSecure
-  ? (".olesistemas.com.ar" as const)
-  : undefined;
+const sharedCookieDomain = getSharedAuthCookieDomain(env.NEXTAUTH_URL);
 
 const crossOriginCookies = isSecure
   ? {
       sessionToken: {
         options: {
-          domain: sharedCookieDomain,
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
           httpOnly: true,
           sameSite: "none" as const,
           path: "/",
@@ -49,7 +48,7 @@ const crossOriginCookies = isSecure
       csrfToken: {
         // csrfToken must NOT be httpOnly so the client can read it for the double-submit pattern
         options: {
-          domain: sharedCookieDomain,
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
           httpOnly: false,
           sameSite: "none" as const,
           path: "/",
@@ -58,7 +57,7 @@ const crossOriginCookies = isSecure
       },
       callbackUrl: {
         options: {
-          domain: sharedCookieDomain,
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
           httpOnly: true,
           sameSite: "none" as const,
           path: "/",
@@ -67,7 +66,7 @@ const crossOriginCookies = isSecure
       },
       pkceCodeVerifier: {
         options: {
-          domain: sharedCookieDomain,
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
           httpOnly: true,
           sameSite: "none" as const,
           path: "/",
@@ -76,7 +75,7 @@ const crossOriginCookies = isSecure
       },
       state: {
         options: {
-          domain: sharedCookieDomain,
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
           httpOnly: true,
           sameSite: "none" as const,
           path: "/",
@@ -85,7 +84,7 @@ const crossOriginCookies = isSecure
       },
       nonce: {
         options: {
-          domain: sharedCookieDomain,
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
           httpOnly: true,
           sameSite: "none" as const,
           path: "/",

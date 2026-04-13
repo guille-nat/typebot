@@ -1,4 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
+import { getSharedAuthCookieDomain } from "@typebot.io/auth/helpers/getSharedAuthCookieDomain";
 import { env } from "@typebot.io/env";
 import prisma from "@typebot.io/prisma";
 import { Plan } from "@typebot.io/prisma/enum";
@@ -100,7 +101,7 @@ export const GET = async (req: NextRequest) => {
   const isHttps =
     env.NEXTAUTH_URL.startsWith("https://") &&
     !new URL(env.NEXTAUTH_URL).hostname.includes("localhost");
-  const sharedCookieDomain = isHttps ? ".olesistemas.com.ar" : undefined;
+  const sharedCookieDomain = getSharedAuthCookieDomain(env.NEXTAUTH_URL);
   const cookieName = `${isHttps ? "__Secure-" : ""}authjs.session-token`;
 
   // SameSite=None requires Secure; fallback to Lax for HTTP (dev)
