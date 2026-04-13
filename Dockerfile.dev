@@ -7,6 +7,7 @@
 #
 # Build:
 #   docker build -f Dockerfile.dev \
+#     --build-arg NEXTAUTH_URL=https://typebot.dev.emozionbot.com \
 #     --build-arg EMOZION_CRM_URL=https://app.dev.olesistemas.com.ar \
 #     --build-arg NEXT_PUBLIC_VIEWER_URL=https://bot.dev.olesistemas.com.ar \
 #     --build-arg NEXT_PUBLIC_EMOZION_MODE=true \
@@ -14,8 +15,10 @@
 #
 # NOTE: EMOZION_CRM_URL is baked into the CSP at build time (next.config.mjs).
 #       NEXT_PUBLIC_VIEWER_URL is baked into the Next.js bundle at build time.
-#       All other runtime vars (DATABASE_URL, NEXTAUTH_URL, etc.) are passed
-#       as environment variables in the Portainer service definition.
+#       NEXTAUTH_URL is required both at build time and runtime because
+#       Next.js evaluates the Auth.js route during `next build`.
+#       All other runtime vars (DATABASE_URL, etc.) are passed as
+#       environment variables in the Portainer service definition.
 # =============================================================================
 
 ARG BUN_VERSION=1.3.9
@@ -29,6 +32,7 @@ FROM oven/bun:${BUN_VERSION}-alpine AS bun-binary
 FROM node:${NODE_VERSION}-alpine AS builder
 
 # Build-time args — baked into the Next.js bundle by the compiler
+ARG NEXTAUTH_URL
 ARG EMOZION_CRM_URL
 ARG NEXT_PUBLIC_EMOZION_MODE=true
 ARG NEXT_PUBLIC_VIEWER_URL
@@ -55,7 +59,7 @@ COPY . .
 RUN SENTRYCLI_SKIP_DOWNLOAD=1 bun install --frozen-lockfile
 
 # Fail fast if required URLs were not provided at build time.
-RUN test -n "${EMOZION_CRM_URL}" && test -n "${NEXT_PUBLIC_VIEWER_URL}"
+RUN test -n "${NEXTAUTH_URL}" && test -n "${EMOZION_CRM_URL}" && test -n "${NEXT_PUBLIC_VIEWER_URL}"
 
 # Generate Prisma client targeting the current platform (linux-musl on Alpine)
 RUN DATABASE_URL=postgresql:// bunx nx db:generate prisma
@@ -63,8 +67,10 @@ RUN DATABASE_URL=postgresql:// bunx nx db:generate prisma
 # Build apps/builder in Next.js standalone mode
 # SKIP_ENV_CHECK avoids requiring every runtime var at build time.
 # NEXT_PUBLIC_VIEWER_URL is baked into the bundle at build time.
+# NEXTAUTH_URL is still required because Auth.js is evaluated during build.
 RUN SKIP_ENV_CHECK=true \
     DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
+    NEXTAUTH_URL=${NEXTAUTH_URL} \
     NEXT_PUBLIC_VIEWER_URL=${NEXT_PUBLIC_VIEWER_URL} \
     EMOZION_CRM_URL=${EMOZION_CRM_URL} \
     NEXT_PUBLIC_EMOZION_MODE=${NEXT_PUBLIC_EMOZION_MODE} \
