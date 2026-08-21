@@ -54,6 +54,7 @@ export const handleListTypebots = async ({
       publishedTypebot: { select: { id: true } },
       id: true,
       icon: true,
+      publicId: true,
       collaborators: { select: { userId: true, type: true } },
     },
   });
@@ -66,6 +67,7 @@ export const handleListTypebots = async ({
       id: typebot.id,
       name: typebot.name,
       icon: typebot.icon,
+      publicId: typebot.publicId,
       publishedTypebotId: typebot.publishedTypebot?.id,
       accessRight: getTypebotAccessRight(user, {
         ...typebot,

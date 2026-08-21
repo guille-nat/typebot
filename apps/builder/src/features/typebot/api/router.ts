@@ -121,6 +121,7 @@ const listTypebots = authenticatedProcedure
             name: true,
             icon: true,
             id: true,
+            publicId: true,
           })
           .merge(
             z.object({
