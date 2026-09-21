@@ -32,6 +32,25 @@ injectViewerUrlIfVercelPreview(process.env.NEXT_PUBLIC_VIEWER_URL);
 
 configureRuntimeEnv();
 
+// Extract the CRM host safely — next.config.mjs is evaluated at build time by NX (project graph
+// analysis) without env vars present, so new URL() would throw "Invalid URL" if called directly.
+const emozionCrmHost = (() => {
+  const url = process.env.EMOZION_CRM_URL;
+  if (!url) return null;
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+})();
+
+const frameAncestorsDirective = [
+  "'self'",
+  "https://app.olesistemas.com.ar",
+  process.env.EMOZION_CRM_URL,
+]
+  .filter((value) => typeof value === "string" && value.length > 0)
+  .join(" ");
 const noStoreHeaders = [
   {
     key: "Cache-Control",
@@ -49,6 +68,17 @@ const noStoreHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Allow Server Actions to be invoked from within cross-origin iframes (EmozionBot CRM embedding).
+  // Next.js 15+ validates the Origin header on Server Action requests; this permits the CRM origin.
+  ...(emozionCrmHost
+    ? {
+        experimental: {
+          serverActions: {
+            allowedOrigins: [emozionCrmHost],
+          },
+        },
+      }
+    : {}),
   poweredByHeader: false,
   transpilePackages: [
     // https://github.com/nextauthjs/next-auth/discussions/9385#discussioncomment-12023012
@@ -59,7 +89,7 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   i18n: {
-    defaultLocale: "en",
+    defaultLocale: "es",
     locales: ["en", "fr", "pt", "pt-BR", "de", "ro", "es", "it", "el"],
   },
   outputFileTracingRoot: join(__dirname, "../../"),
@@ -69,10 +99,6 @@ const nextConfig = {
       {
         source: "/(.*)?",
         headers: [
-          {
-            key: "X-Frame-Options",
-            value: "SAMEORIGIN",
-          },
           {
             key: "X-Content-Type-Options",
             value: "nosniff",
@@ -92,7 +118,7 @@ const nextConfig = {
               `media-src 'self' blob: https:${isDev ? " http://localhost:* " : ""}`,
               "worker-src 'self' blob:",
               "object-src 'none'",
-              "frame-ancestors 'self'",
+              `frame-ancestors ${frameAncestorsDirective}`,
               "form-action 'self'",
               "base-uri 'self'",
             ].join("; "),

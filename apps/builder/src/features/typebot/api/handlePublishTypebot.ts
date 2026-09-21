@@ -48,6 +48,7 @@ export const handlePublishTypebot = async ({
   input: z.infer<typeof publishTypebotInputSchema>;
   context: { user: Pick<User, "id"> };
 }) => {
+  try {
   const warnings: Warning[] = [];
 
   const existingTypebot = await prisma.typebot.findFirst({
@@ -226,4 +227,8 @@ export const handlePublishTypebot = async ({
     message: "success" as const,
     warnings: warnings.length > 0 ? warnings : undefined,
   };
+  } catch (error) {
+    console.error("🔥 ERROR REAL AL PUBLICAR:", error);
+    throw error;
+  }
 };

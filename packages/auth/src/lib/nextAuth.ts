@@ -16,17 +16,93 @@ import NextAuth, { type NextAuthResult } from "next-auth";
 import { accountHasRequiredOAuthGroups } from "../helpers/accountHasRequiredOAuthGroups";
 import { createAuthPrismaAdapter } from "../helpers/createAuthPrismaAdapter";
 import { isEmailLegit } from "../helpers/emailValidation";
+import { getSharedAuthCookieDomain } from "../helpers/getSharedAuthCookieDomain";
 import { getNewUserInvitations } from "../helpers/getNewUserInvitations";
 import oneMinRateLimiter from "./oneMinRateLimiter";
 import { providers } from "./providers";
 
 export const SET_TYPEBOT_COOKIE_HEADER = "Set-Typebot-Cookie" as const;
 
+// When the builder is embedded as a cross-origin iframe (e.g., inside EmozionBot CRM),
+// browsers block cookies that don't have SameSite=None; Secure.
+// We force all NextAuth cookies to use these attributes on HTTPS environments.
+const isSecure =
+  env.NEXTAUTH_URL?.startsWith("https://") === true &&
+  !new URL(env.NEXTAUTH_URL).hostname.includes("localhost");
+
+// Required for Builder (typebot.*) + Viewer (bot.*) to share the same NextAuth session.
+// NOTE: Do NOT set this for localhost dev.
+const sharedCookieDomain = getSharedAuthCookieDomain(env.NEXTAUTH_URL);
+
+const crossOriginCookies = isSecure
+  ? {
+      sessionToken: {
+        options: {
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
+          httpOnly: true,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
+      },
+      csrfToken: {
+        name: sharedCookieDomain
+          ? "__Secure-authjs.csrf-token"
+          : "__Host-authjs.csrf-token",
+        // csrfToken must NOT be httpOnly so the client can read it for the double-submit pattern
+        options: {
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
+          httpOnly: false,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
+      },
+      callbackUrl: {
+        options: {
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
+          httpOnly: true,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
+      },
+      pkceCodeVerifier: {
+        options: {
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
+          httpOnly: true,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
+      },
+      state: {
+        options: {
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
+          httpOnly: true,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
+      },
+      nonce: {
+        options: {
+          ...(sharedCookieDomain ? { domain: sharedCookieDomain } : {}),
+          httpOnly: true,
+          sameSite: "none" as const,
+          path: "/",
+          secure: true,
+        },
+      },
+    }
+  : undefined;
+
 const nextAuth = NextAuth((req) => ({
   adapter: createAuthPrismaAdapter(prisma),
   secret: env.ENCRYPTION_SECRET,
   providers,
   trustHost: env.VERCEL_GIT_COMMIT_SHA ? undefined : true,
+  ...(crossOriginCookies ? { cookies: crossOriginCookies } : {}),
   pages: {
     signIn: "/signin",
     newUser: env.NEXT_PUBLIC_ONBOARDING_TYPEBOT_ID ? "/onboarding" : undefined,

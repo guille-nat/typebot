@@ -19,6 +19,8 @@ type Props = {
   onLogoutClick: () => void;
 };
 
+const isEmozionMode = process.env.NEXT_PUBLIC_EMOZION_MODE === "true";
+
 export const WorkspaceDropdown = ({
   currentWorkspace,
   isLoggingOut,
@@ -38,37 +40,40 @@ export const WorkspaceDropdown = ({
           {!isLoggingOut && currentWorkspace && (
             <>
               <p className="max-w-[300px] truncate">{currentWorkspace.name}</p>
-              <PlanBadge plan={currentWorkspace.plan} />
+              {!isEmozionMode && <PlanBadge plan={currentWorkspace.plan} />}
             </>
           )}
           <ArrowDown01Icon />
         </div>
       </Menu.TriggerButton>
       <Menu.Popup align="end">
-        {workspaces.map((workspace) => (
-          <Menu.Item
-            key={workspace.id}
-            onClick={() => onWorkspaceSelected(workspace.id)}
-          >
-            <div className="flex items-center gap-2 justify-between w-full">
-              <div className="flex items-center gap-2">
-                <EmojiOrImageIcon
-                  icon={workspace.icon}
-                  defaultIcon={<HardDriveIcon className="size-full" />}
-                  className="size-4.5 text-xl"
-                />
-                <p className="max-w-[250px] truncate">{workspace.name}</p>
-                <PlanBadge plan={workspace.plan} />
-              </div>
+        {!isEmozionMode &&
+          workspaces.map((workspace) => (
+            <Menu.Item
+              key={workspace.id}
+              onClick={() => onWorkspaceSelected(workspace.id)}
+            >
+              <div className="flex items-center gap-2 justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <EmojiOrImageIcon
+                    icon={workspace.icon}
+                    defaultIcon={<HardDriveIcon className="size-full" />}
+                    className="size-4.5 text-xl"
+                  />
+                  <p className="max-w-[250px] truncate">{workspace.name}</p>
+                  <PlanBadge plan={workspace.plan} />
+                </div>
 
-              {workspace.id === currentWorkspace?.id && <TickIcon />}
-            </div>
+                {workspace.id === currentWorkspace?.id && <TickIcon />}
+              </div>
+            </Menu.Item>
+          ))}
+        {!isEmozionMode && (
+          <Menu.Item onClick={onCreateNewWorkspaceClick}>
+            <PlusSignIcon />
+            {t("workspace.dropdown.newButton.label")}
           </Menu.Item>
-        ))}
-        <Menu.Item onClick={onCreateNewWorkspaceClick}>
-          <PlusSignIcon />
-          {t("workspace.dropdown.newButton.label")}
-        </Menu.Item>
+        )}
         <Menu.Item onClick={onLogoutClick} className="text-orange-9">
           <LogoutSquare02Icon />
           {t("workspace.dropdown.logoutButton.label")}
