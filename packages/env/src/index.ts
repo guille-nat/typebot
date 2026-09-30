@@ -85,7 +85,18 @@ const baseEnv = {
       )
       .default("FREE"),
     EMOZION_SHARED_SECRET: z.string().min(32).optional(),
-    EMOZION_CRM_URL: z.string().url().optional(),
+    EMOZION_CRM_URL: z
+      .string()
+      .refine(
+        (value) =>
+          value
+            .split(",")
+            .map((origin) => origin.trim())
+            .filter((origin) => origin.length > 0)
+            .every((origin) => z.string().url().safeParse(origin).success),
+        { message: "Must be one or more valid URLs separated by commas" },
+      )
+      .optional(),
     TYPEBOT_DEBUG: boolean.optional().default(false),
     SSRF_ALLOWED_HOSTS: z
       .string()

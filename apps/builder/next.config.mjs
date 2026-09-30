@@ -32,24 +32,32 @@ injectViewerUrlIfVercelPreview(process.env.NEXT_PUBLIC_VIEWER_URL);
 
 configureRuntimeEnv();
 
-// Extract the CRM host safely — next.config.mjs is evaluated at build time by NX (project graph
-// analysis) without env vars present, so new URL() would throw "Invalid URL" if called directly.
-const emozionCrmHost = (() => {
-  const url = process.env.EMOZION_CRM_URL;
-  if (!url) return null;
-  try {
-    return new URL(url).host;
-  } catch {
-    return null;
-  }
-})();
+// EMOZION_CRM_URL accepts one or several CRM origins separated by commas
+// (e.g. "https://chat.emozionbot.com,https://app.olesistemas.com.ar"). Every
+// white-label CRM domain that embeds the builder in an iframe must be listed.
+// next.config.mjs is evaluated at build time by NX (project graph analysis)
+// without env vars present, so invalid/missing values are ignored instead of
+// throwing on new URL().
+const emozionCrmOrigins = (process.env.EMOZION_CRM_URL ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter((value) => value.length > 0)
+  .flatMap((value) => {
+    try {
+      return [new URL(value).origin];
+    } catch {
+      return [];
+    }
+  });
+
+const emozionCrmHosts = emozionCrmOrigins.map((origin) => new URL(origin).host);
 
 const frameAncestorsDirective = [
   "'self'",
   "https://app.olesistemas.com.ar",
-  process.env.EMOZION_CRM_URL,
+  ...emozionCrmOrigins,
 ]
-  .filter((value) => typeof value === "string" && value.length > 0)
+  .filter((value, index, values) => values.indexOf(value) === index)
   .join(" ");
 const noStoreHeaders = [
   {
@@ -70,11 +78,11 @@ const noStoreHeaders = [
 const nextConfig = {
   // Allow Server Actions to be invoked from within cross-origin iframes (EmozionBot CRM embedding).
   // Next.js 15+ validates the Origin header on Server Action requests; this permits the CRM origin.
-  ...(emozionCrmHost
+  ...(emozionCrmHosts.length > 0
     ? {
         experimental: {
           serverActions: {
-            allowedOrigins: [emozionCrmHost],
+            allowedOrigins: emozionCrmHosts,
           },
         },
       }
