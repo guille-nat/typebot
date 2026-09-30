@@ -67,7 +67,7 @@ const computePossibleNextInputBlocks = ({
     const blockId =
       to.blockId ??
       typebotsQueue[0].typebot.groups.find((g) => g.id === to.groupId)
-        ?.blocks[0].id;
+        ?.blocks[0]?.id;
     if (!blockId) continue;
     possibleNextInputBlocks.push(
       ...computePossibleNextInputBlocks({
@@ -99,8 +99,8 @@ const computePossibleNextInputBlocks = ({
     if (!to) return possibleNextInputBlocks;
     const blockId =
       to.blockId ??
-      typebotsQueue[0].typebot.groups.find((g) => g.id === to.groupId)
-        ?.blocks[0].id;
+      typebotsQueue[1].typebot.groups.find((g) => g.id === to.groupId)
+        ?.blocks[0]?.id;
     if (blockId) {
       possibleNextInputBlocks.push(
         ...computePossibleNextInputBlocks({
