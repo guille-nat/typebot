@@ -5,6 +5,8 @@ import type { InputMessage } from "@typebot.io/chat-api/schemas";
 import { env } from "@typebot.io/env";
 import { parseAllowedFileTypesMetadata } from "@typebot.io/lib/extensionFromMimeType";
 import { isURL } from "@typebot.io/lib/isURL";
+import { getStorageProvider } from "@typebot.io/lib/s3/getStorageProvider";
+import { parseS3PublicBaseUrl } from "@typebot.io/lib/s3/parseS3PublicBaseUrl";
 import type { SessionStore } from "@typebot.io/runtime-session-store";
 import type { Variable } from "@typebot.io/variables/schemas";
 import { parseCardsReply } from "./blocks/cards/parseCardsReply";
@@ -118,6 +120,11 @@ export const validateAndParseInputMessage = (
           if (
             env.NEXTAUTH_URL &&
             new URL(env.NEXTAUTH_URL).hostname === hostname
+          )
+            return true;
+          if (
+            getStorageProvider() === "azure" &&
+            new URL(parseS3PublicBaseUrl()).hostname === hostname
           )
             return true;
           return false;
