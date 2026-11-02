@@ -1,6 +1,6 @@
 import type { Readable } from "node:stream";
 import { env } from "@typebot.io/env";
-import { initClient } from "./initClient";
+import { getObjectStorage } from "./getObjectStorage";
 import { parseS3PublicBaseUrl } from "./parseS3PublicBaseUrl";
 
 type Props = {
@@ -16,11 +16,13 @@ export const uploadFileToBucket = async ({
   mimeType,
   visibility = "public",
 }: Props): Promise<string> => {
-  const minioClient = initClient();
-
-  await minioClient.putObject(env.S3_BUCKET, `${visibility}/${key}`, file, {
-    "Content-Type": mimeType,
-    "Cache-Control": "public, max-age=86400",
+  await getObjectStorage().putObject({
+    key: `${visibility}/${key}`,
+    body: file,
+    headers: {
+      contentType: mimeType,
+      cacheControl: "public, max-age=86400",
+    },
   });
 
   if (visibility === "public") return `${parseS3PublicBaseUrl()}/public/${key}`;

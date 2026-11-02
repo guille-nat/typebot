@@ -253,6 +253,27 @@ Note that for AWS S3, your endpoint is usually: `s3.<S3_REGION>.amazonaws.com`
 
 In order to function properly, your S3 bucket must be configured. Make sure to read through the [S3 configuration](./guides/s3) doc.
 
+## Azure Blob Storage (Media uploads)
+
+Alternative to S3. It is used only when the S3 variables are not configured.
+
+| Parameter                          | Default         | Description                                                                                         |
+| ---------------------------------- | --------------- | --------------------------------------------------------------------------------------------------- |
+| AZURE_STORAGE_ACCOUNT_NAME         |                 | Storage account name. Together with the key, enables the upload feature.                            |
+| AZURE_STORAGE_ACCOUNT_KEY          |                 | Storage account access key. Used to upload files and to sign temporary (SAS) URLs for private files. |
+| AZURE_STORAGE_PUBLIC_CONTAINER     | typebot-public  | Container for public files (`public/...` keys). Must allow anonymous read access at the blob level. |
+| AZURE_STORAGE_PRIVATE_CONTAINER    | typebot-private | Container for private files (`private/...` keys). Must not allow anonymous access.                 |
+| AZURE_STORAGE_BLOB_ENDPOINT        |                 | Custom blob endpoint (sovereign clouds or Azurite). Defaults to `https://<account>.blob.core.windows.net` |
+| AZURE_STORAGE_PUBLIC_CUSTOM_DOMAIN |                 | If public files are served from a different URL (CDN, custom domain) pointing to the public container |
+
+Azure grants anonymous access per container, not per folder, so public and private files are stored in two separate containers. Before starting Typebot:
+
+1. In the storage account settings, enable **Allow Blob anonymous access**.
+2. Create the public container with the **Blob (anonymous read access for blobs only)** access level.
+3. Create the private container with the **Private (no anonymous access)** access level.
+
+Uploads go through the Typebot server, so no CORS rule is needed on the storage account.
+
 ## Giphy (GIF picker)
 
 Used to search for GIF. You can create a Giphy app [here](https://developers.giphy.com/dashboard/)

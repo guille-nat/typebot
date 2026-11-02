@@ -1,21 +1,16 @@
-import { env } from "@typebot.io/env";
-import { initClient } from "./initClient";
+import { getObjectStorage } from "./getObjectStorage";
 import { isS3Configured } from "./isS3Configured";
 
 const removeObjectsRecursively = async (prefix: string) => {
   if (!isS3Configured()) return;
 
-  const minioClient = initClient();
+  const objectStorage = getObjectStorage();
 
-  const bucketName = env.S3_BUCKET;
-
-  const objectsStream = minioClient.listObjectsV2(bucketName, prefix, true);
-
-  for await (const obj of objectsStream) {
+  for await (const object of objectStorage.listObjects(prefix)) {
     try {
-      await minioClient.removeObject(bucketName, obj.name);
+      await objectStorage.removeObject(object.key);
     } catch (err) {
-      console.error(`Error removing ${obj.name}:`, err);
+      console.error(`Error removing ${object.key}:`, err);
     }
   }
 };

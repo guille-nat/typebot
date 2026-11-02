@@ -1,6 +1,4 @@
-import { env } from "@typebot.io/env";
-import { CopyConditions } from "minio";
-import { initClient } from "./initClient";
+import { getObjectStorage } from "./getObjectStorage";
 import { isS3Configured } from "./isS3Configured";
 
 export const copyObjects = async (
@@ -8,17 +6,14 @@ export const copyObjects = async (
 ) => {
   if (filesToCopy.length === 0 || !isS3Configured()) return;
 
-  const minioClient = initClient();
+  const objectStorage = getObjectStorage();
 
-  const conds = new CopyConditions();
   return Promise.all(
     filesToCopy.map((fileToCopy) =>
-      minioClient.copyObject(
-        env.S3_BUCKET,
-        fileToCopy.newName,
-        `${env.S3_BUCKET}/${fileToCopy.oldName}`,
-        conds,
-      ),
+      objectStorage.copyObject({
+        sourceKey: fileToCopy.oldName,
+        destinationKey: fileToCopy.newName,
+      }),
     ),
   );
 };

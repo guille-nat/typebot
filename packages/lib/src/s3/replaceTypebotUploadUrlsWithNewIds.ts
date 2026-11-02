@@ -1,5 +1,4 @@
-import { env } from "@typebot.io/env";
-import { initClient } from "./initClient";
+import { getObjectStorage } from "./getObjectStorage";
 import { isS3Configured } from "./isS3Configured";
 
 export const replaceTypebotUploadUrlsWithNewIds = async <
@@ -25,54 +24,33 @@ export const replaceTypebotUploadUrlsWithNewIds = async <
       filesToCopy: [],
     };
   let stringifiedTypebot = JSON.stringify(typebot);
-  const minioClient = initClient();
-
-  const objectsStream = minioClient.listObjectsV2(
-    env.S3_BUCKET,
-    `public/workspaces/${typebot.workspaceId}/typebots/${typebot.id}/`,
-  );
+  const typebotFolderPrefix = `public/workspaces/${typebot.workspaceId}/typebots/${typebot.id}/`;
 
   const filesToCopy: { oldName: string; newName: string }[] = [];
-  for await (const obj of objectsStream) {
-    if (!obj) continue;
-    if ("prefix" in obj) {
-      if (obj.prefix.endsWith("blocks/")) {
-        const blocksStream = minioClient.listObjectsV2(
-          env.S3_BUCKET,
-          obj.prefix,
-          true,
-        );
-        for await (const blockObj of blocksStream) {
-          if (!blockObj.name) continue;
-          const newFileName = blockObj.name
-            .replace(typebot.id, newTypebotId)
-            .replace(typebot.workspaceId, newWorkspaceId);
-          filesToCopy.push({
-            oldName: blockObj.name,
-            newName: newFileName,
-          });
-          stringifiedTypebot = stringifiedTypebot.replaceAll(
-            blockObj.name,
-            newFileName,
-          );
-        }
-      } else {
-      }
+  for await (const object of getObjectStorage().listObjects(
+    typebotFolderPrefix,
+  )) {
+    if (!isTypebotFileOrBlockFile(object.key.slice(typebotFolderPrefix.length)))
       continue;
-    }
-    if (!obj.name) continue;
-    const newFileName = obj.name
+    const newFileName = object.key
       .replace(typebot.id, newTypebotId)
       .replace(typebot.workspaceId, newWorkspaceId);
     filesToCopy.push({
-      oldName: obj.name,
+      oldName: object.key,
       newName: newFileName,
     });
-    stringifiedTypebot = stringifiedTypebot.replaceAll(obj.name, newFileName);
+    stringifiedTypebot = stringifiedTypebot.replaceAll(object.key, newFileName);
   }
 
   return {
     typebot: JSON.parse(stringifiedTypebot),
     filesToCopy,
   };
+};
+
+// Keeps files stored directly in the typebot folder and files nested in a
+// "blocks/" folder, skipping other folders such as results.
+const isTypebotFileOrBlockFile = (relativeKey: string) => {
+  const [firstSegment, ...nestedSegments] = relativeKey.split("/");
+  return nestedSegments.length === 0 || `${firstSegment}/`.endsWith("blocks/");
 };

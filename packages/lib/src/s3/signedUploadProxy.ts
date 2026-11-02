@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { Readable, Transform } from "node:stream";
 import { env } from "@typebot.io/env";
 import { z } from "zod";
-import { initClient } from "./initClient";
+import { getObjectStorage } from "./getObjectStorage";
 import { parseS3PublicBaseUrl } from "./parseS3PublicBaseUrl";
 
 const uploadUrlExpiresInMs = 10 * 60 * 1000;
@@ -60,9 +60,7 @@ export const generateSignedUploadProxyUrl = ({
   return {
     presignedUrl: `${baseUrl.replace(/\/$/, "")}/api/uploads/${encodeURIComponent(token)}`,
     formData: {},
-    fileUrl: env.S3_PUBLIC_CUSTOM_DOMAIN
-      ? `${env.S3_PUBLIC_CUSTOM_DOMAIN}/${filePath}`
-      : `${parseS3PublicBaseUrl()}/${filePath}`,
+    fileUrl: `${parseS3PublicBaseUrl()}/${filePath}`,
     fileType,
     maxFileSize,
   };
@@ -163,15 +161,16 @@ const uploadObject = async ({
   body: Readable;
   size?: number;
 }) => {
-  const minioClient = initClient();
-
   try {
-    await minioClient.putObject(env.S3_BUCKET, payload.filePath, body, size, {
-      "Content-Type": payload.fileType,
-      "Cache-Control": cacheControl,
-      ...(payload.contentDisposition
-        ? { "Content-Disposition": payload.contentDisposition }
-        : {}),
+    await getObjectStorage().putObject({
+      key: payload.filePath,
+      body,
+      size,
+      headers: {
+        contentType: payload.fileType,
+        cacheControl,
+        contentDisposition: payload.contentDisposition,
+      },
     });
   } catch (error) {
     if (error instanceof SignedUploadProxyError) throw error;

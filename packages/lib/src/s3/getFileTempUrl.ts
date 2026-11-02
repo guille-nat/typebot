@@ -1,5 +1,4 @@
-import { env } from "@typebot.io/env";
-import { initClient } from "./initClient";
+import { getObjectStorage } from "./getObjectStorage";
 
 type Props = {
   key: string;
@@ -8,7 +7,5 @@ type Props = {
 export const getFileTempUrl = async ({
   key,
   expires,
-}: Props): Promise<string> => {
-  const minioClient = initClient();
-  return minioClient.presignedGetObject(env.S3_BUCKET, key, expires ?? 3600);
-};
+}: Props): Promise<string> =>
+  getObjectStorage().getTempUrl({ key, expiresInSeconds: expires ?? 3600 });

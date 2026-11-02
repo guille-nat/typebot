@@ -7,6 +7,8 @@ import {
   parseUploadPathSegment,
   resolveUploadFileType,
 } from "@typebot.io/lib/s3/createUploadFilePath";
+import { storageNotConfiguredMessage } from "@typebot.io/lib/s3/getObjectStorage";
+import { isS3Configured } from "@typebot.io/lib/s3/isS3Configured";
 import { resolveUploadProxyBaseUrl } from "@typebot.io/lib/s3/resolveUploadProxyBaseUrl";
 import { generateSignedUploadProxyUrl } from "@typebot.io/lib/s3/signedUploadProxy";
 import prisma from "@typebot.io/prisma";
@@ -56,10 +58,9 @@ export const generateUploadUrl = authenticatedProcedure
       input: { filePathProps, fileType },
       context: { apiOrigin, user },
     }) => {
-      if (!env.S3_ENDPOINT || !env.S3_ACCESS_KEY || !env.S3_SECRET_KEY)
+      if (!isS3Configured())
         throw new ORPCError("INTERNAL_SERVER_ERROR", {
-          message:
-            "S3 not properly configured. Missing one of those variables: S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY",
+          message: storageNotConfiguredMessage,
         });
 
       const resolvedFileType = resolveUploadFileType(fileType);
